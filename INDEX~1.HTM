@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="My Planner">
+<meta name="theme-color" content="#5B7B6C">
+<title>My Planner</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<style>
+:root{
+  --bg:#F4F2ED; --card:#FFFFFF; --ink:#2E3230; --muted:#8A918D;
+  --accent:#5B7B6C; --accent-soft:#E3EAE6; --danger:#C0604F;
+  --line:#E7E4DD; --done:#B9C2BD; --radius:16px;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0; padding:0;}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  font-size:17px; line-height:1.4;
+  padding-bottom:calc(90px + env(safe-area-inset-bottom));
+  min-height:100vh;
+}
+header{
+  padding:calc(14px + env(safe-area-inset-top)) 18px 10px;
+  display:flex; align-items:baseline; justify-content:space-between;
+}
+header h1{font-size:22px; margin:0; font-weight:700;}
+header .date{color:var(--muted); font-size:14px;}
+main{padding:0 14px;}
+/* Bottom tab bar */
+nav{
+  position:fixed; bottom:0; left:0; right:0; z-index:50;
+  display:flex; background:var(--card); border-top:1px solid var(--line);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+nav button{
+  flex:1; border:0; background:none; padding:14px 0 12px;
+  font-size:16px; font-weight:600; color:var(--muted); cursor:pointer;
+}
+nav button.active{color:var(--accent);}
+nav button .ico{display:block; font-size:22px; line-height:1; margin-bottom:2px;}
+/* Cards */
+.card{
+  background:var(--card); border-radius:var(--radius); margin:12px 0;
+  box-shadow:0 1px 3px rgba(0,0,0,.05); overflow:hidden;
+}
+.card-head{
+  display:flex; align-items:center; gap:10px;
+  padding:16px; cursor:pointer; user-select:none; min-height:60px;
+}
+.card-head .title{flex:1; font-weight:600; font-size:17px; word-break:break-word;}
+.card-head .prog{color:var(--muted); font-size:14px; white-space:nowrap;}
+.card-head .chev{color:var(--muted); font-size:14px; transition:transform .15s;}
+.card.open .chev{transform:rotate(90deg);}
+.card-body{display:none; border-top:1px solid var(--line);}
+.card.open .card-body{display:block;}
+.badge{
+  font-size:11px; font-weight:700; letter-spacing:.4px; text-transform:uppercase;
+  background:var(--accent-soft); color:var(--accent);
+  border-radius:8px; padding:3px 8px; white-space:nowrap;
+}
+/* Tasks */
+ul.tasks{list-style:none; margin:0; padding:4px 0;}
+ul.tasks li{
+  display:flex; align-items:center; gap:12px;
+  padding:6px 14px; min-height:52px; border-bottom:1px solid var(--line);
+}
+ul.tasks li:last-child{border-bottom:0;}
+.tick{
+  width:30px; height:30px; min-width:30px; border-radius:10px;
+  border:2px solid var(--done); background:var(--card);
+  display:flex; align-items:center; justify-content:center;
+  font-size:18px; color:#fff; cursor:pointer;
+}
+li.done .tick{background:var(--accent); border-color:var(--accent);}
+.task-text{flex:1; word-break:break-word; padding:8px 0; cursor:pointer;}
+li.done .task-text{color:var(--done); text-decoration:line-through;}
+.mini{
+  border:0; background:none; color:var(--muted); font-size:18px;
+  width:42px; height:42px; cursor:pointer; border-radius:10px;
+}
+.mini:active{background:var(--accent-soft);}
+/* Add row + suggestions */
+.addrow{padding:10px 14px 14px; position:relative;}
+.addrow .row{display:flex; gap:8px;}
+.addrow input{
+  flex:1; font-size:17px; padding:12px 14px; border:1.5px solid var(--line);
+  border-radius:12px; background:var(--bg); color:var(--ink); min-width:0;
+}
+.addrow input:focus{outline:none; border-color:var(--accent);}
+.addrow button.go{
+  border:0; background:var(--accent); color:#fff; font-size:22px;
+  width:50px; border-radius:12px; cursor:pointer;
+}
+.sugg{
+  display:flex; flex-wrap:wrap; gap:8px; padding-top:10px;
+}
+.sugg button{
+  border:1px solid var(--line); background:var(--accent-soft); color:var(--ink);
+  border-radius:20px; padding:9px 14px; font-size:15px; cursor:pointer;
+  max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+/* List actions */
+.list-actions{
+  display:flex; gap:8px; padding:0 14px 14px; flex-wrap:wrap;
+}
+.list-actions button{
+  border:1px solid var(--line); background:var(--card); color:var(--muted);
+  border-radius:12px; padding:10px 14px; font-size:14px; font-weight:600; cursor:pointer;
+}
+.list-actions button.warn{color:var(--danger); border-color:#EAD4CF;}
+/* Section-level buttons */
+.bigbtn{
+  width:100%; padding:16px; margin:12px 0; border-radius:var(--radius);
+  border:2px dashed var(--done); background:none; color:var(--accent);
+  font-size:16px; font-weight:700; cursor:pointer;
+}
+.subhead{
+  margin:22px 4px 4px; font-size:13px; font-weight:700; color:var(--muted);
+  text-transform:uppercase; letter-spacing:.6px;
+}
+.empty{color:var(--muted); text-align:center; padding:24px 10px; font-size:15px;}
+/* Completed area */
+details.completed{margin:16px 0;}
+details.completed summary{
+  cursor:pointer; padding:14px 6px; font-weight:700; color:var(--muted);
+  font-size:14px; text-transform:uppercase; letter-spacing:.6px; list-style:none;
+}
+details.completed summary::-webkit-details-marker{display:none;}
+details.completed summary::before{content:"▸ ";}
+details.completed[open] summary::before{content:"▾ ";}
+.card.donecard .card-head .title{color:var(--muted);}
+/* New cleaning list mini-form */
+.newform{background:var(--card); border-radius:var(--radius); padding:16px; margin:12px 0; box-shadow:0 1px 3px rgba(0,0,0,.05);}
+.newform input,.newform select{
+  width:100%; font-size:17px; padding:12px 14px; margin-bottom:10px;
+  border:1.5px solid var(--line); border-radius:12px; background:var(--bg); color:var(--ink);
+}
+.newform .row{display:flex; gap:8px;}
+.newform .row button{
+  flex:1; padding:13px; border-radius:12px; font-size:16px; font-weight:700; cursor:pointer; border:0;
+}
+.newform .row .create{background:var(--accent); color:#fff;}
+.newform .row .cancel{background:var(--line); color:var(--ink);}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="hTitle">To-Do</h1>
+  <span class="date" id="hDate"></span>
+</header>
+<main id="main"></main>
+<nav>
+  <button id="tabTodo" class="active" onclick="switchTab('todo')"><span class="ico">☑︎</span>To-Do</button>
+  <button id="tabClean" onclick="switchTab('clean')"><span class="ico">✨</span>Cleaning</button>
+</nav>
+
+<script>
+"use strict";
+/* ================= Storage ================= */
+const KEY = "myPlannerV1";
+const WD = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+function defaultState(){
+  const cleanLists = WD.map((d,i)=>({
+    id: uid()+i, name: d, cadence: "weekly", weekday: i,
+    tasks: [], lastResetPeriod: ""
+  }));
+  cleanLists.push({id:uid()+"m", name:"Monthly", cadence:"monthly", tasks:[], lastResetPeriod:""});
+  cleanLists.push({id:uid()+"o", name:"Occasional / One-off", cadence:"none", tasks:[], lastResetPeriod:""});
+  cleanLists.push({id:uid()+"s", name:"Special Cleaning", cadence:"none", tasks:[], lastResetPeriod:""});
+  return {
+    history: [],                    // [{text, count, last}]
+    todo: { lists: [] },            // [{id, name, tasks:[{id,text,done}], completed}]
+    clean: { lists: cleanLists }
+  };
+}
+
+let state;
+try { state = JSON.parse(localStorage.getItem(KEY)) || defaultState(); }
+catch(e){ state = defaultState(); }
+
+function save(){ localStorage.setItem(KEY, JSON.stringify(state)); }
+
+/* ================= Period keys ================= */
+function pad(n){ return String(n).padStart(2,"0"); }
+function isoWeekKey(d){
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = t.getUTCDay() || 7;              // Mon=1..Sun=7
+  t.setUTCDate(t.getUTCDate() + 4 - day);      // nearest Thursday
+  const yearStart = new Date(Date.UTC(t.getUTCFullYear(),0,1));
+  const week = Math.ceil(((t - yearStart)/86400000 + 1)/7);
+  return t.getUTCFullYear() + "-W" + pad(week);
+}
+function periodKey(cadence, d){
+  d = d || new Date();
+  if(cadence === "daily")   return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+  if(cadence === "weekly")  return isoWeekKey(d);
+  if(cadence === "monthly") return d.getFullYear()+"-"+pad(d.getMonth()+1);
+  return "";
+}
+
+function checkResets(){
+  let changed = false;
+  state.clean.lists.forEach(l=>{
+    if(l.cadence === "none") return;
+    const pk = periodKey(l.cadence);
+    if(l.lastResetPeriod !== pk){
+      l.tasks.forEach(t=> t.done = false);
+      l.lastResetPeriod = pk;
+      changed = true;
+    }
+  });
+  if(changed) save();
+}
+
+/* ================= History / suggestions ================= */
+function remember(text){
+  const t = text.trim();
+  if(!t) return;
+  const low = t.toLowerCase();
+  const hit = state.history.find(h=> h.text.toLowerCase() === low);
+  if(hit){ hit.count++; hit.last = Date.now(); }
+  else state.history.push({text:t, count:1, last:Date.now()});
+  if(state.history.length > 500){
+    state.history.sort((a,b)=> b.last - a.last);
+    state.history.length = 500;
+  }
+}
+function suggest(q){
+  const low = q.trim().toLowerCase();
+  if(!low) return [];
+  return state.history
+    .filter(h=> h.text.toLowerCase().includes(low) && h.text.toLowerCase() !== low)
+    .sort((a,b)=> (b.count - a.count) || (b.last - a.last))
+    .slice(0,5);
+}
+
+/* ================= App state ================= */
+let tab = "todo";
+let openIds = {};        // listId -> true (expanded)
+let showNewClean = false;
+
+function esc(s){
+  return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+function switchTab(t){
+  tab = t; showNewClean = false;
+  document.getElementById("tabTodo").classList.toggle("active", t==="todo");
+  document.getElementById("tabClean").classList.toggle("active", t==="clean");
+  document.getElementById("hTitle").textContent = t==="todo" ? "To-Do" : "Cleaning";
+  render();
+}
+
+function findList(id){
+  return state.todo.lists.find(l=>l.id===id) || state.clean.lists.find(l=>l.id===id);
+}
+function isCleanList(id){ return state.clean.lists.some(l=>l.id===id); }
+
+/* ================= Actions ================= */
+function toggleOpen(id){
+  openIds[id] = !openIds[id];
+  if(openIds[id]) checkResets();
+  render();
+  if(openIds[id]){
+    const el = document.getElementById("card-"+id);
+    if(el) el.scrollIntoView({behavior:"smooth", block:"nearest"});
+  }
+}
+
+function addTask(id){
+  const inp = document.getElementById("in-"+id);
+  const text = inp ? inp.value.trim() : "";
+  if(!text) return;
+  const l = findList(id);
+  l.tasks.push({id:uid(), text, done:false});
+  remember(text);
+  if(!isCleanList(id) && l.completed){ l.completed = false; }
+  save(); render();
+  const again = document.getElementById("in-"+id);
+  if(again) again.focus();
+}
+
+function fillSuggestion(id, text){
+  const inp = document.getElementById("in-"+id);
+  if(inp){ inp.value = text; }
+  addTask(id);
+}
+
+function onType(id){
+  const inp = document.getElementById("in-"+id);
+  const box = document.getElementById("sg-"+id);
+  if(!inp || !box) return;
+  const matches = suggest(inp.value);
+  box.innerHTML = matches.map(m=>
+    `<button type="button" onclick="fillSuggestion('${id}', this.dataset.t)" data-t="${esc(m.text)}">${esc(m.text)}</button>`
+  ).join("");
+}
+
+function toggleTask(listId, taskId){
+  const l = findList(listId);
+  const t = l.tasks.find(t=>t.id===taskId);
+  t.done = !t.done;
+  if(!isCleanList(listId)){
+    l.completed = l.tasks.length > 0 && l.tasks.every(t=>t.done);
+  }
+  save(); render();
+}
+
+function editTask(listId, taskId){
+  const l = findList(listId);
+  const t = l.tasks.find(t=>t.id===taskId);
+  const v = prompt("Edit task:", t.text);
+  if(v === null) return;
+  const nv = v.trim();
+  if(!nv) return;
+  t.text = nv; remember(nv);
+  save(); render();
+}
+
+function delTask(listId, taskId){
+  const l = findList(listId);
+  l.tasks = l.tasks.filter(t=>t.id!==taskId);
+  if(!isCleanList(listId)){
+    l.completed = l.tasks.length > 0 && l.tasks.every(t=>t.done);
+  }
+  save(); render();
+}
+
+function renameList(id){
+  const l = findList(id);
+  const v = prompt("List name:", l.name);
+  if(v === null) return;
+  const nv = v.trim();
+  if(nv){ l.name = nv; save(); render(); }
+}
+
+function deleteList(id){
+  const l = findList(id);
+  if(!confirm('Delete "'+l.name+'" and all its tasks?')) return;
+  state.todo.lists = state.todo.lists.filter(x=>x.id!==id);
+  state.clean.lists = state.clean.lists.filter(x=>x.id!==id);
+  delete openIds[id];
+  save(); render();
+}
+
+function resetList(id){
+  const l = findList(id);
+  l.tasks.forEach(t=> t.done = false);
+  if(l.cadence && l.cadence !== "none") l.lastResetPeriod = periodKey(l.cadence);
+  if(l.completed !== undefined) l.completed = false;
+  save(); render();
+}
+
+function reopenList(id){
+  const l = findList(id);
+  l.completed = false;
+  save(); render();
+}
+
+function newTodoList(){
+  const v = prompt("Name of new list:");
+  if(v === null) return;
+  const nv = v.trim();
+  if(!nv) return;
+  const l = {id:uid(), name:nv, tasks:[], completed:false};
+  state.todo.lists.push(l);
+  openIds[l.id] = true;
+  save(); render();
+}
+
+function createCleanList(){
+  const name = document.getElementById("ncName").value.trim();
+  const cad = document.getElementById("ncCad").value;
+  if(!name){ document.getElementById("ncName").focus(); return; }
+  const l = {id:uid(), name, cadence:cad, tasks:[], lastResetPeriod: cad==="none" ? "" : periodKey(cad)};
+  if(cad==="weekly") l.weekday = new Date().getDay() === 0 ? 6 : new Date().getDay()-1;
+  state.clean.lists.push(l);
+  showNewClean = false;
+  openIds[l.id] = true;
+  save(); render();
+}
+
+/* ================= Rendering ================= */
+const CADLBL = {daily:"Daily", weekly:"Weekly", monthly:"Monthly", none:"No auto-reset"};
+
+function taskRow(listId, t){
+  return `<li class="${t.done?"done":""}">
+    <div class="tick" onclick="toggleTask('${listId}','${t.id}')">${t.done?"✓":""}</div>
+    <div class="task-text" onclick="toggleTask('${listId}','${t.id}')">${esc(t.text)}</div>
+    <button class="mini" onclick="editTask('${listId}','${t.id}')" aria-label="Edit">✎</button>
+    <button class="mini" onclick="delTask('${listId}','${t.id}')" aria-label="Delete">✕</button>
+  </li>`;
+}
+
+function addRow(id){
+  return `<div class="addrow">
+    <div class="row">
+      <input id="in-${id}" type="text" placeholder="Add a task…" autocomplete="off"
+        oninput="onType('${id}')"
+        onkeydown="if(event.key==='Enter'){addTask('${id}')}">
+      <button class="go" onclick="addTask('${id}')" aria-label="Add">+</button>
+    </div>
+    <div class="sugg" id="sg-${id}"></div>
+  </div>`;
+}
+
+function listCard(l, opts){
+  const open = !!openIds[l.id];
+  const done = l.tasks.filter(t=>t.done).length;
+  const prog = l.tasks.length ? `${done} / ${l.tasks.length} done` : "empty";
+  const badge = opts.badge ? `<span class="badge">${opts.badge}</span>` : "";
+  let actions = `<button onclick="renameList('${l.id}')">Rename</button>`;
+  if(opts.reset) actions += `<button onclick="resetList('${l.id}')">Reset ticks</button>`;
+  if(opts.reopen) actions += `<button onclick="reopenList('${l.id}')">Reopen list</button>`;
+  actions += `<button class="warn" onclick="deleteList('${l.id}')">Delete list</button>`;
+  return `<div class="card ${open?"open":""} ${opts.doneStyle?"donecard":""}" id="card-${l.id}">
+    <div class="card-head" onclick="toggleOpen('${l.id}')">
+      <span class="chev">▶</span>
+      <span class="title">${esc(l.name)}</span>
+      ${badge}
+      <span class="prog">${prog}</span>
+    </div>
+    <div class="card-body">
+      <ul class="tasks">${l.tasks.map(t=>taskRow(l.id,t)).join("") || `<div class="empty">No tasks yet</div>`}</ul>
+      ${addRow(l.id)}
+      <div class="list-actions">${actions}</div>
+    </div>
+  </div>`;
+}
+
+function render(){
+  const m = document.getElementById("main");
+  if(tab === "todo"){
+    const active = state.todo.lists.filter(l=>!l.completed);
+    const comp = state.todo.lists.filter(l=>l.completed);
+    let h = `<button class="bigbtn" onclick="newTodoList()">＋ New list</button>`;
+    h += active.map(l=>listCard(l,{})).join("") ||
+         `<div class="empty">No lists yet — tap “New list” to start.</div>`;
+    if(comp.length){
+      h += `<details class="completed" open>
+        <summary>Completed (${comp.length})</summary>
+        ${comp.map(l=>listCard(l,{reopen:true, doneStyle:true, badge:"Complete"})).join("")}
+      </details>`;
+    }
+    m.innerHTML = h;
+  } else {
+    const weekdays = state.clean.lists.filter(l=> l.weekday !== undefined && l.cadence==="weekly");
+    const others   = state.clean.lists.filter(l=> !(l.weekday !== undefined && l.cadence==="weekly"));
+    let h = `<div class="subhead">This week</div>`;
+    h += weekdays
+      .slice().sort((a,b)=> a.weekday - b.weekday)
+      .map(l=> listCard(l,{badge:"Weekly", reset:true})).join("");
+    h += `<div class="subhead">Other lists</div>`;
+    h += others.map(l=> listCard(l,{badge:CADLBL[l.cadence]||"", reset:true})).join("") ||
+         `<div class="empty">No other lists.</div>`;
+    if(showNewClean){
+      h += `<div class="newform">
+        <input id="ncName" type="text" placeholder="List name…" autocomplete="off">
+        <select id="ncCad">
+          <option value="none">No auto-reset (occasional / special)</option>
+          <option value="daily">Daily — ticks clear each day</option>
+          <option value="weekly">Weekly — ticks clear each week</option>
+          <option value="monthly">Monthly — ticks clear each month</option>
+        </select>
+        <div class="row">
+          <button class="create" onclick="createCleanList()">Create</button>
+          <button class="cancel" onclick="showNewClean=false;render()">Cancel</button>
+        </div>
+      </div>`;
+    } else {
+      h += `<button class="bigbtn" onclick="showNewClean=true;render();document.getElementById('ncName').focus()">＋ New cleaning list</button>`;
+    }
+    m.innerHTML = h;
+  }
+}
+
+/* ================= PWA: service worker ================= */
+function setupPWA(){
+  if("serviceWorker" in navigator){
+    navigator.serviceWorker.register("sw.js").catch(()=>{});
+  }
+}
+
+/* ================= Boot ================= */
+document.getElementById("hDate").textContent =
+  new Date().toLocaleDateString(undefined,{weekday:"short", day:"numeric", month:"short"});
+checkResets();
+render();
+setupPWA();
+// Re-check resets whenever the app is brought back to the foreground
+document.addEventListener("visibilitychange", ()=>{
+  if(!document.hidden){ checkResets(); render(); }
+});
+</script>
+</body>
+</html>
